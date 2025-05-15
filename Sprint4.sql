@@ -183,7 +183,13 @@ HAVING Num_Transacciones > 30;
 # Mostra la mitjana d'amount per IBAN de les targetes de crèdit a la companyia Donec Ltd, utilitza almenys 2 taules.
 
 SELECT *
-FROM
+FROM transactions t
+JOIN credit_card cc
+ON
+JOIN companies co
+WHERE company_name = 'Donec Ltd';
+
+
 
 
 # Nivell 2
