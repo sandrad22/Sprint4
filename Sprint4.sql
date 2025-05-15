@@ -184,9 +184,10 @@ HAVING Num_Transacciones > 30;
 
 SELECT *
 FROM transactions t
-JOIN credit_card cc
-ON
-JOIN companies co
+LEFT JOIN credit_card cc
+ON t.card_id = cc.id
+LEFT JOIN companies co
+ON t.card_id = co.company_id
 WHERE company_name = 'Donec Ltd';
 
 
