@@ -182,19 +182,44 @@ HAVING Num_Transacciones > 30;
 # Exercici 2
 # Mostra la mitjana d'amount per IBAN de les targetes de crèdit a la companyia Donec Ltd, utilitza almenys 2 taules.
 
-SELECT *
+SELECT iban AS IBAN, AVG(amount) AS Media_Amount
 FROM transactions t
 LEFT JOIN credit_card cc
 ON t.card_id = cc.id
 LEFT JOIN companies co
-ON t.card_id = co.company_id
-WHERE company_name = 'Donec Ltd';
-
+ON t.business_id = co.company_id
+WHERE company_name = 'Donec Ltd'
+GROUP BY iban;
 
 
 
 # Nivell 2
 # Crea una nova taula que reflecteixi l'estat de les targetes de crèdit basat en si les últimes tres transaccions van ser declinades i genera la següent consulta:
+
+SELECT *
+FROM transactions
+WHERE declined = 1
+ORDER BY card_id, timestamp
+;
+
+# Hay que transformar la variable expiring_date en fecha. Tener en cuenta que el primer valor es el mes, el segundo el día y el tercero el año
+
+# SET SQL_SAFE_UPDATES = 0;
+
+#UPDATE credit_card 
+#SET expiring_date = DATE_FORMAT(STR_TO_DATE(expiring_date, '%m-%d-%Y'), '%Y-%m-%d');
+
+# SET SQL_SAFE_UPDATES = 1;
+
+declare @Existingdate datetime
+Set @Existingdate=GETDATE()
+Select CONVERT(varchar,@Existingdate,1) as [MM/DD/YY]
+
+
+SELECT *
+FROM credit_card
+ORDER BY expiring_date;
+
 
 # Exercici 1
 # Quantes targetes estan actives?
