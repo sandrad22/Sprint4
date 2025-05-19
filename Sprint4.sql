@@ -196,29 +196,21 @@ GROUP BY iban;
 # Nivell 2
 # Crea una nova taula que reflecteixi l'estat de les targetes de crèdit basat en si les últimes tres transaccions van ser declinades i genera la següent consulta:
 
-SELECT *
-FROM transactions
-WHERE declined = 1
-ORDER BY card_id, timestamp
+select card_id, timestamp, declined
+from transactions
+GROUP BY card_id, timestamp, declined
+order by card_id, timestamp, declined DESC
 ;
 
-# Hay que transformar la variable expiring_date en fecha. Tener en cuenta que el primer valor es el mes, el segundo el día y el tercero el año
-
-# SET SQL_SAFE_UPDATES = 0;
-
-#UPDATE credit_card 
-#SET expiring_date = DATE_FORMAT(STR_TO_DATE(expiring_date, '%m-%d-%Y'), '%Y-%m-%d');
-
-# SET SQL_SAFE_UPDATES = 1;
-
-declare @Existingdate datetime
-Set @Existingdate=GETDATE()
-Select CONVERT(varchar,@Existingdate,1) as [MM/DD/YY]
 
 
-SELECT *
-FROM credit_card
-ORDER BY expiring_date;
+          
+          
+
+CREATE TABLE artists_and_works
+  SELECT artist.name, COUNT(work.artist_id) AS number_of_works
+  FROM artist LEFT JOIN work ON artist.id = work.artist_id
+  GROUP BY artist.id;
 
 
 # Exercici 1
@@ -237,3 +229,21 @@ ORDER BY expiring_date;
 
 
 
+
+
+
+# Transformar variable expiring_date en fecha  ###################
+
+#ALTER TABLE credit_card
+#ADD exp_date DATE;
+
+#SET SQL_SAFE_UPDATES = 0;
+#UPDATE credit_card
+#SET exp_date = STR_TO_DATE(expiring_date, '%m/%d/%y');
+#SET SQL_SAFE_UPDATES = 1;
+
+#ALTER TABLE credit_card
+#DROP COLUMN expiring_date;
+
+#ALTER TABLE credit_card
+#RENAME COLUMN exp_date to expiring_date;
