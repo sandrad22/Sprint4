@@ -1,6 +1,6 @@
 CREATE SCHEMA data;
 
-# Nivell 1
+# NIVELL 1
 # Descàrrega els arxius CSV, estudia'ls i dissenya una base de dades amb un esquema d'estrella que contingui, almenys 4 taules de les quals puguis realitzar les següents consultes:
 
 USE data;
@@ -34,24 +34,6 @@ CREATE TABLE IF NOT EXISTS products (
 	weight FLOAT,
 	warehouse_id VARCHAR(10) 
 );
-
-CREATE TABLE IF NOT EXISTS transactions (
-     id VARCHAR(255) PRIMARY KEY,
-     card_id VARCHAR(20),
-     business_id VARCHAR(20), 
-     timestamp VARCHAR(30),
-     amount DECIMAL(10, 2),
-     declined BOOLEAN,
-     products_ids VARCHAR(30),
-     user_id INT, 
-     lat FLOAT,
-     longitude FLOAT,
-     FOREIGN KEY (card_id) REFERENCES credit_card(id),
-     FOREIGN KEY (business_id) REFERENCES companies(company_id),
-     FOREIGN KEY (user_id) REFERENCES users_ca(id),
-     FOREIGN KEY (user_id) REFERENCES users_uk(id),
-     FOREIGN KEY (user_id) REFERENCES users_usa(id)
-    );
 
 CREATE TABLE IF NOT EXISTS users_ca (
        id INT PRIMARY KEY,
@@ -92,6 +74,24 @@ CREATE TABLE IF NOT EXISTS users_usa (
         address VARCHAR(255)        
     );
 
+CREATE TABLE IF NOT EXISTS transactions (
+     id VARCHAR(255) PRIMARY KEY,
+     card_id VARCHAR(20),
+     business_id VARCHAR(20), 
+     timestamp VARCHAR(30),
+     amount DECIMAL(10, 2),
+     declined BOOLEAN,
+     products_ids VARCHAR(30),
+     user_id INT, 
+     lat FLOAT,
+     longitude FLOAT,
+     FOREIGN KEY (card_id) REFERENCES credit_card(id),
+     FOREIGN KEY (business_id) REFERENCES companies(company_id),
+     FOREIGN KEY (user_id) REFERENCES users_ca(id),
+     FOREIGN KEY (user_id) REFERENCES users_uk(id),
+     FOREIGN KEY (user_id) REFERENCES users_usa(id)
+    );
+
 
 SHOW VARIABLES LIKE "secure_file_priv";
 
@@ -117,19 +117,6 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;
 
-
-#SET foreign_key_checks = 0;
-
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\transactions (1).csv'
-INTO TABLE transactions
-FIELDS TERMINATED BY ';'
-OPTIONALLY ENCLOSED BY ';'
-LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
-
-#SET foreign_key_checks = 1;
-
-
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_ca (1).csv'
 INTO TABLE users_ca
 FIELDS TERMINATED BY ','
@@ -150,6 +137,17 @@ FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\r\n'    # Al tratarse de un archivo windows CRLF llevan oculto al final de la línea ciertos símbolos y es necesario poner esta instruccion
 IGNORE 1 ROWS;
+
+SET foreign_key_checks = 0;
+
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\transactions (1).csv'
+INTO TABLE transactions
+FIELDS TERMINATED BY ';'
+OPTIONALLY ENCLOSED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+
+SET foreign_key_checks = 1;
 
 
 # Exercici 1
@@ -193,24 +191,59 @@ GROUP BY iban;
 
 
 
-# Nivell 2
+# NIVELL 2
 # Crea una nova taula que reflecteixi l'estat de les targetes de crèdit basat en si les últimes tres transaccions van ser declinades i genera la següent consulta:
 
-select card_id, timestamp, declined
+
+# Este código mira el num de rechazos de cada tarjeta de credito, pero NO MIRA sólo los tres últimos
+CREATE TABLE estado_tarjetas AS
+   (SELECT card_id, SUM(declined) AS Num_Declined
+	FROM transactions
+	GROUP BY card_id
+	HAVING Num_Declined >= 3);
+
+#DROP TABLE estado_tarjetas;
+
+# Calcula las tres transacciones más recientes para cada tarjeta de crédito ############
+WITH TresUltimos AS (
+    SELECT tr.card_id, tr.timestamp, tr.declined,
+		ROW_NUMBER() OVER(PARTITION BY card_id ORDER BY timestamp DESC) AS ord
+	FROM transactions tr
+)
+SELECT card_id, timestamp, declined
+FROM TresUltimos
+WHERE ord <= 3;
+
+
+##############################################################################
+La cláusula WITH no se utiliza dentro de la sentencia CREATE TABLE en MySQL. 
+La cláusula WITH se utiliza para definir consultas temporales llamadas "Common Table Expressions" (CTE) en sentencias SELECT, UPDATE o DELETE, y no para la creación de tablas. 
+La sentencia CREATE TABLE se utiliza para definir la estructura de una nueva tabla, incluyendo nombre, columnas, tipos de datos y restricciones. 
+Para crear una tabla a partir de los resultados de una consulta, se puede usar la sintaxis CREATE TABLE ... SELECT:
+Code
+
+CREATE TABLE nueva_tabla
+AS
+SELECT columna1, columna2, ...
+FROM tabla_existente
+WHERE condicion;
+##############################################################################
+
+
+
+
+select *
+from estado_tarjetas;
+
+select id, card_id, timestamp, declined
 from transactions
-GROUP BY card_id, timestamp, declined
-order by card_id, timestamp, declined DESC
-;
+order by card_id, timestamp DESC;
+       
+       
 
 
 
-          
-          
 
-CREATE TABLE artists_and_works
-  SELECT artist.name, COUNT(work.artist_id) AS number_of_works
-  FROM artist LEFT JOIN work ON artist.id = work.artist_id
-  GROUP BY artist.id;
 
 
 # Exercici 1
