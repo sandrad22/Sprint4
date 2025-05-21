@@ -171,12 +171,6 @@ GROUP BY user_id, u.name, u.surname
 HAVING Num_Transacciones > 30;
 
 
-#SELECT user_id, COUNT(*) AS Num_Transacciones
-#FROM transactions
-#GROUP BY user_id
-#HAVING Num_Transacciones > 30;
-
-
 # Exercici 2
 # Mostra la mitjana d'amount per IBAN de les targetes de crèdit a la companyia Donec Ltd, utilitza almenys 2 taules.
 
@@ -194,71 +188,60 @@ GROUP BY iban;
 # NIVELL 2
 # Crea una nova taula que reflecteixi l'estat de les targetes de crèdit basat en si les últimes tres transaccions van ser declinades i genera la següent consulta:
 
-
-# Este código mira el num de rechazos de cada tarjeta de credito, pero NO MIRA sólo los tres últimos
-CREATE TABLE estado_tarjetas AS
-   (SELECT card_id, SUM(declined) AS Num_Declined
-	FROM transactions
-	GROUP BY card_id
-	HAVING Num_Declined >= 3);
-
 #DROP TABLE estado_tarjetas;
 
-# Calcula las tres transacciones más recientes para cada tarjeta de crédito ############
-WITH TresUltimos AS (
-    SELECT tr.card_id, tr.timestamp, tr.declined,
-		ROW_NUMBER() OVER(PARTITION BY card_id ORDER BY timestamp DESC) AS ord
-	FROM transactions tr
-)
-SELECT card_id, timestamp, declined
-FROM TresUltimos
-WHERE ord <= 3;
-
-
-##############################################################################
-La cláusula WITH no se utiliza dentro de la sentencia CREATE TABLE en MySQL. 
-La cláusula WITH se utiliza para definir consultas temporales llamadas "Common Table Expressions" (CTE) en sentencias SELECT, UPDATE o DELETE, y no para la creación de tablas. 
-La sentencia CREATE TABLE se utiliza para definir la estructura de una nueva tabla, incluyendo nombre, columnas, tipos de datos y restricciones. 
-Para crear una tabla a partir de los resultados de una consulta, se puede usar la sintaxis CREATE TABLE ... SELECT:
-Code
-
-CREATE TABLE nueva_tabla
-AS
-SELECT columna1, columna2, ...
-FROM tabla_existente
-WHERE condicion;
-##############################################################################
-
-
-
-
-select *
-from estado_tarjetas;
-
-select id, card_id, timestamp, declined
-from transactions
-order by card_id, timestamp DESC;
-       
-       
-
-
-
-
+CREATE TABLE estado_tarjetas AS
+SELECT 
+    card_id, 
+    CASE
+        WHEN SUM(
+				CASE 
+					WHEN declined = 1 THEN 1 
+                    ELSE 0 
+				END) = 3 THEN 0
+        ELSE 1
+    END AS estado               
+FROM 
+    (SELECT card_id, timestamp, declined, 
+         ROW_NUMBER() OVER(PARTITION BY card_id ORDER BY timestamp DESC) AS contador
+     FROM transactions
+    ) orden
+WHERE contador <= 3 
+GROUP BY card_id;
 
 
 # Exercici 1
 # Quantes targetes estan actives?
 
+SELECT COUNT(*) AS 'Número de tarjetas activas'
+FROM estado_tarjetas
+WHERE estado = 1;
 
 
 
-# Nivell 3
+# NIVELL 3
 # Crea una taula amb la qual puguem unir les dades del nou arxiu products.csv amb la base de dades creada, tenint en compte que des de transaction tens product_ids. Genera la següent consulta:
+
+SELECT *
+FROM products;
+
+SELECT *
+FROM transactions;
+
+
+
+####  https://stackoverflow.com/questions/14950466/how-to-split-the-name-string-in-mysql
+
+
 
 
 
 # Exercici 1
 # Necessitem conèixer el nombre de vegades que s'ha venut cada producte.
+
+
+
+
 
 
 
@@ -280,3 +263,47 @@ order by card_id, timestamp DESC;
 
 #ALTER TABLE credit_card
 #RENAME COLUMN exp_date to expiring_date;
+
+
+
+CREATE TEMPORARY TABLE temp_numeros (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    numero INT
+);
+
+-- Paso 2: Insertar los números individuales en la tabla temporal
+INSERT INTO temp_numeros (numero)
+SELECT
+    SUBSTRING_INDEX(numeros, ',', 1)
+FROM
+    mi_tabla
+WHERE
+    numeros LIKE '%,%'; -- Para evitar errores si la cadena no contiene comas
+
+-- Paso 3: Eliminar el primer número de la cadena original
+UPDATE mi_tabla
+SET numeros = SUBSTRING(numeros, LENGTH(SUBSTRING_INDEX(numeros, ',', 1)) + 2)
+WHERE
+    numeros LIKE '%,%';
+
+-- Paso 4: Repetir los pasos 2 y 3 hasta que la cadena original esté vacía o no contenga comas
+WHILE LENGTH(mi_tabla.numeros) > 0 DO
+    INSERT INTO temp_numeros (numero)
+    SELECT
+        SUBSTRING_INDEX(mi_tabla.numeros, ',', 1)
+    FROM
+        mi_tabla
+    WHERE
+        mi_tabla.numeros LIKE '%,%';
+
+    UPDATE mi_tabla
+    SET numeros = SUBSTRING(mi_tabla.numeros, LENGTH(SUBSTRING_INDEX(mi_tabla.numeros, ',', 1)) + 2)
+    WHERE
+        mi_tabla.numeros LIKE '%,%';
+END WHILE;
+
+-- Paso 5: Seleccionar los números de la tabla temporal
+SELECT * FROM temp_numeros;
+
+-- Paso 6: Limpiar la tabla temporal
+DROP TEMPORARY TABLE temp_numeros;
