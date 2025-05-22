@@ -95,6 +95,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 SHOW VARIABLES LIKE "secure_file_priv";
 
+############################## QUITAR TODOS LOS (1) #######################################3
+
 
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\companies (1).csv'
 INTO TABLE companies
@@ -142,8 +144,8 @@ SET foreign_key_checks = 0;
 
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\transactions (1).csv'
 INTO TABLE transactions
-FIELDS TERMINATED BY ';'
-OPTIONALLY ENCLOSED BY ';'
+FIELDS TERMINATED BY ';'				     	####### se pone ; en lugar de ,
+OPTIONALLY ENCLOSED BY ';'                     ########################  MIRAR SI HACE FATA "OPTIONALLY" ##################
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;
 
