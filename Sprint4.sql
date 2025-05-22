@@ -95,59 +95,60 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 SHOW VARIABLES LIKE "secure_file_priv";
 
-############################## QUITAR TODOS LOS (1) #######################################3
+########################################################
+############################## QUITAR TODOS LOS (1) ###################################
+###########################################################
 
-
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\companies (1).csv'
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\companies.csv'
 INTO TABLE companies
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+FIELDS TERMINATED BY ','       # indica que los campos están separados por una coma
+ENCLOSED BY '"'                # indica que los valores contienen un separador de campos o la terminación de línea, garantiza la integridad de los datos y evita errores de parsing.
+LINES TERMINATED BY '\n'       # indica que las líneas están separadas por un carácter de nueva línea \n
+IGNORE 1 ROWS;			       # ignora la primera línea porque es un encabezado
 
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\credit_cards (1).csv'
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\credit_cards.csv'
 INTO TABLE credit_card
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+FIELDS TERMINATED BY ','   
+ENCLOSED BY '"'            
+LINES TERMINATED BY '\n'   
+IGNORE 1 ROWS;			   
 
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\products (1).csv'
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\products.csv'
 INTO TABLE products
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+FIELDS TERMINATED BY ','   
+ENCLOSED BY '"'            
+LINES TERMINATED BY '\n'   
+IGNORE 1 ROWS;			   
 
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_ca (1).csv'
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_ca.csv'
 INTO TABLE users_ca
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\r\n'    # Al tratarse de un archivo windows CRLF llevan oculto al final de la línea ciertos símbolos y es necesario poner esta instruccion
-IGNORE 1 ROWS;
+FIELDS TERMINATED BY ','  
+ENCLOSED BY '"'           
+LINES TERMINATED BY '\r\n'     # indica que el archivo de texto ha sido creado en Windows CRLF y utiliza \r\n como terminador de línea.
+IGNORE 1 ROWS;			  
 
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_uk (1).csv'
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_uk.csv'
 INTO TABLE users_uk
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\r\n'    # Al tratarse de un archivo windows CRLF llevan oculto al final de la línea ciertos símbolos y es necesario poner esta instruccion
-IGNORE 1 ROWS;
+FIELDS TERMINATED BY ','   
+ENCLOSED BY '"'            
+LINES TERMINATED BY '\r\n' 
+IGNORE 1 ROWS;			   
 
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_usa.csv'
 INTO TABLE users_usa
-FIELDS TERMINATED BY ','
-ENCLOSED BY '"'
-LINES TERMINATED BY '\r\n'    # Al tratarse de un archivo windows CRLF llevan oculto al final de la línea ciertos símbolos y es necesario poner esta instruccion
-IGNORE 1 ROWS;
+FIELDS TERMINATED BY ','   
+ENCLOSED BY '"'            
+LINES TERMINATED BY '\r\n' 
+IGNORE 1 ROWS;			   
 
 SET foreign_key_checks = 0;
 
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\transactions (1).csv'
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\transactions.csv'     # se carga en último lugar por las FK's
 INTO TABLE transactions
-FIELDS TERMINATED BY ';'				     	####### se pone ; en lugar de ,
-OPTIONALLY ENCLOSED BY ';'                     ########################  MIRAR SI HACE FATA "OPTIONALLY" ##################
-LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+FIELDS TERMINATED BY ';'   # indica que los campos están separados por punto y coma
+ENCLOSED BY '"'           
+LINES TERMINATED BY '\n'  
+IGNORE 1 ROWS;			  
 
 SET foreign_key_checks = 1;
 
@@ -161,10 +162,10 @@ JOIN
 	(
 	SELECT * 
 	FROM users_ca 
-	UNION 
+	UNION ALL        # union all porque no hay que eliminar duplicados, más eficiente
 	SELECT * 
 	FROM users_uk 
-	UNION 
+	UNION ALL
 	SELECT * 
 	FROM users_usa 
     ) u
@@ -176,14 +177,14 @@ HAVING Num_Transacciones > 30;
 # Exercici 2
 # Mostra la mitjana d'amount per IBAN de les targetes de crèdit a la companyia Donec Ltd, utilitza almenys 2 taules.
 
-SELECT iban AS IBAN, AVG(amount) AS Media_Amount
-FROM transactions t
-LEFT JOIN credit_card cc
-ON t.card_id = cc.id
-LEFT JOIN companies co
-ON t.business_id = co.company_id
-WHERE company_name = 'Donec Ltd'
-GROUP BY iban;
+SELECT cc.iban AS IBAN, AVG(tr.amount) AS Media_Amount
+FROM transactions tr
+JOIN credit_card cc
+ON tr.card_id = cc.id
+JOIN companies co
+ON tr.business_id = co.company_id
+WHERE co.company_name = 'Donec Ltd'
+GROUP BY cc.iban;
 
 
 
@@ -197,7 +198,7 @@ SELECT
     card_id, 
     CASE
         WHEN SUM(
-				CASE 
+				CASE                                # la variable declined no es un entero y podría dar error haciendo la suma directamente, así se asegura que no haya error
 					WHEN declined = 1 THEN 1 
                     ELSE 0 
 				END) = 3 THEN 0
@@ -205,10 +206,10 @@ SELECT
     END AS tarjeta_activa               
 FROM 
     (SELECT card_id, declined, 
-         ROW_NUMBER() OVER(PARTITION BY card_id ORDER BY timestamp DESC) AS contador
+         ROW_NUMBER() OVER(PARTITION BY card_id ORDER BY timestamp DESC) AS cuenta_transacciones
      FROM transactions
-    ) orden
-WHERE contador <= 3 
+    ) AS ordena_transacciones
+WHERE cuenta_transacciones <= 3 
 GROUP BY card_id;
 
 
