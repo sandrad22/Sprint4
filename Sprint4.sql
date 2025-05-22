@@ -222,24 +222,22 @@ WHERE estado = 1;
 # NIVELL 3
 # Crea una taula amb la qual puguem unir les dades del nou arxiu products.csv amb la base de dades creada, tenint en compte que des de transaction tens product_ids. Genera la següent consulta:
 
-SELECT *
-FROM products;
+#DROP TABLE productos_por_transaccion;
 
-SELECT *
-FROM transactions;
-
-
-
-####  https://stackoverflow.com/questions/14950466/how-to-split-the-name-string-in-mysql
-
-
-
+CREATE TABLE productos_por_transaccion AS
+SELECT pr.id AS product_id, pr.product_name, pr.price, pr.colour, pr.weight, pr.warehouse_id, tr.id AS transaction_id
+FROM transactions tr
+JOIN products pr 
+ON FIND_IN_SET(pr.id, REPLACE(tr.products_ids, ' ', ''));
 
 
 # Exercici 1
 # Necessitem conèixer el nombre de vegades que s'ha venut cada producte.
 
-
+SELECT product_id AS 'Identificador del producto', product_name AS 'Nombre del producto', COUNT(*) AS 'Número de Ventas'
+FROM productos_por_transaccion
+GROUP BY product_id, product_name
+ORDER BY  product_name;
 
 
 
@@ -264,46 +262,3 @@ FROM transactions;
 #ALTER TABLE credit_card
 #RENAME COLUMN exp_date to expiring_date;
 
-
-
-CREATE TEMPORARY TABLE temp_numeros (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    numero INT
-);
-
--- Paso 2: Insertar los números individuales en la tabla temporal
-INSERT INTO temp_numeros (numero)
-SELECT
-    SUBSTRING_INDEX(numeros, ',', 1)
-FROM
-    mi_tabla
-WHERE
-    numeros LIKE '%,%'; -- Para evitar errores si la cadena no contiene comas
-
--- Paso 3: Eliminar el primer número de la cadena original
-UPDATE mi_tabla
-SET numeros = SUBSTRING(numeros, LENGTH(SUBSTRING_INDEX(numeros, ',', 1)) + 2)
-WHERE
-    numeros LIKE '%,%';
-
--- Paso 4: Repetir los pasos 2 y 3 hasta que la cadena original esté vacía o no contenga comas
-WHILE LENGTH(mi_tabla.numeros) > 0 DO
-    INSERT INTO temp_numeros (numero)
-    SELECT
-        SUBSTRING_INDEX(mi_tabla.numeros, ',', 1)
-    FROM
-        mi_tabla
-    WHERE
-        mi_tabla.numeros LIKE '%,%';
-
-    UPDATE mi_tabla
-    SET numeros = SUBSTRING(mi_tabla.numeros, LENGTH(SUBSTRING_INDEX(mi_tabla.numeros, ',', 1)) + 2)
-    WHERE
-        mi_tabla.numeros LIKE '%,%';
-END WHILE;
-
--- Paso 5: Seleccionar los números de la tabla temporal
-SELECT * FROM temp_numeros;
-
--- Paso 6: Limpiar la tabla temporal
-DROP TEMPORARY TABLE temp_numeros;
