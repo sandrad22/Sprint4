@@ -200,9 +200,9 @@ SELECT
                     ELSE 0 
 				END) = 3 THEN 0
         ELSE 1
-    END AS estado               
+    END AS tarjeta_activa               
 FROM 
-    (SELECT card_id, timestamp, declined, 
+    (SELECT card_id, declined, 
          ROW_NUMBER() OVER(PARTITION BY card_id ORDER BY timestamp DESC) AS contador
      FROM transactions
     ) orden
@@ -215,7 +215,7 @@ GROUP BY card_id;
 
 SELECT COUNT(*) AS 'Número de tarjetas activas'
 FROM estado_tarjetas
-WHERE estado = 1;
+WHERE tarjeta_activa = 1;
 
 
 
