@@ -26,16 +26,7 @@ CREATE TABLE IF NOT EXISTS credit_card (
 	expiring_date VARCHAR(20)
 );
 
-CREATE TABLE IF NOT EXISTS products (
-	id INT PRIMARY KEY,
-	product_name VARCHAR(255),
-	price VARCHAR(10),
-	colour VARCHAR(15),
-	weight FLOAT,
-	warehouse_id VARCHAR(10) 
-);
-
-CREATE TABLE IF NOT EXISTS users_ca (
+CREATE TABLE IF NOT EXISTS users (
        id INT PRIMARY KEY,
         name VARCHAR(100),
         surname VARCHAR(100),
@@ -47,32 +38,6 @@ CREATE TABLE IF NOT EXISTS users_ca (
         postal_code VARCHAR(100),
         address VARCHAR(255)
 	);
-
-CREATE TABLE IF NOT EXISTS users_uk (
-        id INT PRIMARY KEY,
-        name VARCHAR(100),
-        surname VARCHAR(100),
-        phone VARCHAR(150),
-        email VARCHAR(150),
-        birth_date VARCHAR(100),
-        country VARCHAR(150),
-        city VARCHAR(150),
-        postal_code VARCHAR(100),
-        address VARCHAR(255)        
-    );
-
-CREATE TABLE IF NOT EXISTS users_usa (
-        id INT PRIMARY KEY,
-        name VARCHAR(100),
-        surname VARCHAR(100),
-        phone VARCHAR(150),
-        email VARCHAR(150),
-        birth_date VARCHAR(100),
-        country VARCHAR(150),
-        city VARCHAR(150),
-        postal_code VARCHAR(100),
-        address VARCHAR(255)        
-    );
 
 CREATE TABLE IF NOT EXISTS transactions (
      id VARCHAR(255) PRIMARY KEY,
@@ -87,17 +52,10 @@ CREATE TABLE IF NOT EXISTS transactions (
      longitude FLOAT,
      FOREIGN KEY (card_id) REFERENCES credit_card(id),
      FOREIGN KEY (business_id) REFERENCES companies(company_id),
-     FOREIGN KEY (user_id) REFERENCES users_ca(id),
-     FOREIGN KEY (user_id) REFERENCES users_uk(id),
-     FOREIGN KEY (user_id) REFERENCES users_usa(id)
+     FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
-
 SHOW VARIABLES LIKE "secure_file_priv";
-
-########################################################
-############################## QUITAR TODOS LOS (1) ###################################
-###########################################################
 
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\companies.csv'
 INTO TABLE companies
@@ -113,33 +71,27 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'   
 IGNORE 1 ROWS;			   
 
-LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\products.csv'
-INTO TABLE products
-FIELDS TERMINATED BY ','   
-ENCLOSED BY '"'            
-LINES TERMINATED BY '\n'   
-IGNORE 1 ROWS;			   
-
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_ca.csv'
-INTO TABLE users_ca
+INTO TABLE users
 FIELDS TERMINATED BY ','  
 ENCLOSED BY '"'           
 LINES TERMINATED BY '\r\n'     # indica que el archivo de texto ha sido creado en Windows CRLF y utiliza \r\n como terminador de línea.
 IGNORE 1 ROWS;			  
 
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_uk.csv'
-INTO TABLE users_uk
+INTO TABLE users
 FIELDS TERMINATED BY ','   
 ENCLOSED BY '"'            
 LINES TERMINATED BY '\r\n' 
 IGNORE 1 ROWS;			   
 
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\users_usa.csv'
-INTO TABLE users_usa
+INTO TABLE users
 FIELDS TERMINATED BY ','   
 ENCLOSED BY '"'            
 LINES TERMINATED BY '\r\n' 
 IGNORE 1 ROWS;			   
+
 
 SET foreign_key_checks = 0;
 
@@ -156,21 +108,11 @@ SET foreign_key_checks = 1;
 # Exercici 1
 # Realitza una subconsulta que mostri tots els usuaris amb més de 30 transaccions utilitzant almenys 2 taules.
 
-SELECT u.name AS Nombre, u.surname AS Apellido, COUNT(*) AS Num_Transacciones
+SELECT t.user_id AS 'Id. usuario', u.name AS Nombre, u.surname AS Apellido, COUNT(*) AS Num_Transacciones    #  comprobar los resultados   267 272 275 92
 FROM transactions t
-JOIN 
-	(
-	SELECT * 
-	FROM users_ca 
-	UNION ALL        # union all porque no hay que eliminar duplicados, más eficiente
-	SELECT * 
-	FROM users_uk 
-	UNION ALL
-	SELECT * 
-	FROM users_usa 
-    ) u
+JOIN users u
 ON t.user_id = u.id
-GROUP BY user_id, u.name, u.surname
+GROUP BY t.user_id, u.name, u.surname
 HAVING Num_Transacciones > 30;
 
 
@@ -193,13 +135,13 @@ GROUP BY cc.iban;
 
 #DROP TABLE estado_tarjetas;
 
-CREATE TABLE estado_tarjetas AS
+CREATE TABLE estado_tarjetas AS          ################ poner etiqueta de la tarjeta activa/inactiva #####################
 SELECT 
     card_id, 
     CASE
-        WHEN SUM(
-				CASE                                # la variable declined no es un entero y podría dar error haciendo la suma directamente, así se asegura que no haya error
-					WHEN declined = 1 THEN 1 
+        WHEN SUM(									# la variable declined es booleana y, aunque podría sumar el valor 1, podría dar error
+				CASE                                
+					WHEN declined = 1 THEN 1
                     ELSE 0 
 				END) = 3 THEN 0
         ELSE 1
@@ -225,27 +167,48 @@ WHERE tarjeta_activa = 1;
 # NIVELL 3
 # Crea una taula amb la qual puguem unir les dades del nou arxiu products.csv amb la base de dades creada, tenint en compte que des de transaction tens product_ids. Genera la següent consulta:
 
-#DROP TABLE productos_por_transaccion;
+CREATE TABLE IF NOT EXISTS products (
+	id VARCHAR(30) PRIMARY KEY,
+	product_name VARCHAR(255),
+	price VARCHAR(10),
+	colour VARCHAR(15),
+	weight FLOAT,
+	warehouse_id VARCHAR(10) 
+);
 
-CREATE TABLE productos_por_transaccion AS
-SELECT pr.id AS product_id, pr.product_name, pr.price, pr.colour, pr.weight, pr.warehouse_id, tr.id AS transaction_id
+LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\products.csv'
+INTO TABLE products
+FIELDS TERMINATED BY ','   
+ENCLOSED BY '"'            
+LINES TERMINATED BY '\n'   
+IGNORE 1 ROWS;			   
+
+
+CREATE TABLE transaction_products AS
+SELECT pr.id AS product_id, tr.id AS transaction_id
 FROM transactions tr
 JOIN products pr 
 ON FIND_IN_SET(pr.id, REPLACE(tr.products_ids, ' ', ''));
+
+ALTER TABLE transaction_products
+ADD PRIMARY KEY (product_id, transaction_id);
+
+ALTER TABLE transaction_products
+ADD FOREIGN KEY (product_id) REFERENCES products(id);
+
+ALTER TABLE transaction_products
+ADD FOREIGN KEY (transaction_id) REFERENCES transactions(id);
 
 
 # Exercici 1
 # Necessitem conèixer el nombre de vegades que s'ha venut cada producte.
 
 SELECT product_id AS 'Identificador del producto', product_name AS 'Nombre del producto', COUNT(*) AS 'Número de Ventas'
-FROM productos_por_transaccion
-GROUP BY product_id, product_name
-ORDER BY  product_name;
-
-
-
-
-
+FROM transaction_products tp
+JOIN products p
+ON tp.product_id = p.id
+GROUP BY tp.product_id, p.product_name
+ORDER BY p.product_name;
 
 
 
