@@ -1,9 +1,8 @@
 CREATE SCHEMA data;
+USE data;
 
 # NIVELL 1
 # Descàrrega els arxius CSV, estudia'ls i dissenya una base de dades amb un esquema d'estrella que contingui, almenys 4 taules de les quals puguis realitzar les següents consultes:
-
-USE data;
 
 CREATE TABLE IF NOT EXISTS companies (
 	company_id VARCHAR(15) PRIMARY KEY,
@@ -92,8 +91,7 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\r\n' 
 IGNORE 1 ROWS;			   
 
-
-SET foreign_key_checks = 0;
+#SET foreign_key_checks = 0;
 
 LOAD DATA INFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.4\\Uploads\\transactions.csv'     # se carga en último lugar por las FK's
 INTO TABLE transactions
@@ -102,18 +100,28 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'  
 IGNORE 1 ROWS;			  
 
-SET foreign_key_checks = 1;
+#SET foreign_key_checks = 1;
 
 
 # Exercici 1
 # Realitza una subconsulta que mostri tots els usuaris amb més de 30 transaccions utilitzant almenys 2 taules.
 
-SELECT t.user_id AS 'Id. usuario', u.name AS Nombre, u.surname AS Apellido, COUNT(*) AS Num_Transacciones    #  comprobar los resultados   267 272 275 92
+SELECT t.user_id AS 'Id. usuario', u.name AS Nombre, u.surname AS Apellido, COUNT(*) AS Num_Transacciones   
 FROM transactions t
 JOIN users u
 ON t.user_id = u.id
+WHERE t.declined = 0
 GROUP BY t.user_id, u.name, u.surname
 HAVING Num_Transacciones > 30;
+
+
+#SELECT t.user_id AS 'Id. usuario', u.name AS Nombre, u.surname AS Apellido, t.declined, COUNT(*)
+#FROM transactions t
+#JOIN users u
+#ON t.user_id = u.id
+#WHERE t.user_id = 275
+#GROUP BY t.declined;
+
 
 
 # Exercici 2
@@ -125,9 +133,8 @@ JOIN credit_card cc
 ON tr.card_id = cc.id
 JOIN companies co
 ON tr.business_id = co.company_id
-WHERE co.company_name = 'Donec Ltd'
+WHERE co.company_name = 'Donec Ltd' AND tr.declined = 0
 GROUP BY cc.iban;
-
 
 
 # NIVELL 2
@@ -135,7 +142,7 @@ GROUP BY cc.iban;
 
 #DROP TABLE estado_tarjetas;
 
-CREATE TABLE estado_tarjetas AS          ################ poner etiqueta de la tarjeta activa/inactiva #####################
+CREATE TABLE estado_tarjetas AS          
 SELECT 
     card_id, 
     CASE
@@ -184,20 +191,19 @@ LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;			   
 
 
-CREATE TABLE transaction_products AS
-SELECT pr.id AS product_id, tr.id AS transaction_id
+CREATE TABLE transaction_products (
+    transaction_id VARCHAR(255),
+    product_id VARCHAR(30),
+    PRIMARY KEY (transaction_id, product_id),
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO transaction_products (transaction_id, product_id)
+SELECT tr.id, pr.id
 FROM transactions tr
-JOIN products pr 
+JOIN products pr
 ON FIND_IN_SET(pr.id, REPLACE(tr.products_ids, ' ', ''));
-
-ALTER TABLE transaction_products
-ADD PRIMARY KEY (product_id, transaction_id);
-
-ALTER TABLE transaction_products
-ADD FOREIGN KEY (product_id) REFERENCES products(id);
-
-ALTER TABLE transaction_products
-ADD FOREIGN KEY (transaction_id) REFERENCES transactions(id);
 
 
 # Exercici 1
@@ -206,9 +212,14 @@ ADD FOREIGN KEY (transaction_id) REFERENCES transactions(id);
 SELECT product_id AS 'Identificador del producto', product_name AS 'Nombre del producto', COUNT(*) AS 'Número de Ventas'
 FROM transaction_products tp
 JOIN products p
-ON tp.product_id = p.id
+ON tp.product_id = p.id 
+JOIN transactions t
+ON tp.transaction_id = t.id
+WHERE declined = 0
 GROUP BY tp.product_id, p.product_name
 ORDER BY p.product_name;
+
+
 
 
 
@@ -227,4 +238,6 @@ ORDER BY p.product_name;
 
 #ALTER TABLE credit_card
 #RENAME COLUMN exp_date to expiring_date;
+
+
 
